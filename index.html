@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0c1424"><link rel="manifest" href="./manifest.webmanifest">
+<title>DualMesh Web</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0c1424;color:#eaf2ff;font:15px system-ui,Arial}header,main{max-width:850px;margin:auto;padding:18px}header{border-bottom:1px solid #2b3a52}h1{font-size:26px;margin:0}.muted,small{color:#aebfd5}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:15px}.card{background:#17253a;border:1px solid #314561;border-radius:15px;padding:17px}h2{font-size:19px;margin:0 0 12px}button{border:0;background:#4289ec;color:#fff;border-radius:9px;padding:11px 13px;font-weight:700;margin:4px 5px 4px 0}button.alt{background:#344760}button:disabled{opacity:.55}pre{background:#0a1422;padding:10px;border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto;font-size:12px}nav{display:flex;gap:8px;margin-bottom:18px}nav button{background:#283d58}nav button.active{background:#4289ec}section[hidden]{display:none}.status{font-weight:600;color:#c2d4ef}.warning{border:1px solid #bb8241;background:#42301f;padding:13px;border-radius:10px;margin-bottom:16px}
+</style>
+</head><body>
+<header><h1>📡 DualMesh Web</h1><div class="muted">Two independent Heltec V4 Bluetooth connections</div></header>
+<main><div id="warning" class="warning" hidden></div>
+<nav><button data-tab="radios" class="active">Radios</button><button data-tab="activity">Activity</button><button data-tab="map">Map</button></nav>
+<section id="radios"><div class="cards">
+<article class="card"><h2>Radio 1 · 910 MHz</h2><p class="status" id="state0">Disconnected</p><button id="connect0">Connect radio</button><button id="disconnect0" class="alt">Disconnect</button><p><small id="device0">No radio selected</small></p><pre id="log0">Waiting for radio…</pre></article>
+<article class="card"><h2>Radio 2 · 915 MHz</h2><p class="status" id="state1">Disconnected</p><button id="connect1">Connect radio</button><button id="disconnect1" class="alt">Disconnect</button><p><small id="device1">No radio selected</small></p><pre id="log1">Waiting for radio…</pre></article>
+</div><p class="muted"><small>910 and 915 MHz are labels, not verified or configured frequencies. Select the correct Heltec in each Bluetooth picker.</small></p></section>
+<section id="activity" hidden><article class="card"><h2>BLE activity</h2><button id="clear" class="alt">Clear</button><pre id="allLog">No activity yet</pre></article></section>
+<section id="map" hidden><article class="card"><h2>Maps coming later</h2><p class="muted">Node maps require integration of the MeshCore protocol and location data.</p></article></section>
+<p class="muted"><small>BLE transport prototype only. No MeshCore message decoding, inboxes, encryption, transmit, offline maps or background monitoring yet. Use HTTPS and Chrome on Android. The radios must expose the expected Nordic UART BLE service.</small></p>
+</main>
+<script>
+'use strict';
+const SERVICE='6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const RX='6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+const radios=[{},{}], history=[];
+const el=id=>document.getElementById(id);
+function status(i,msg){el('state'+i).textContent=msg}
+function record(i,msg){const line='['+new Date().toLocaleTimeString()+'] Radio '+(i+1)+': '+msg;history.unshift(line);if(history.length>250)history.pop();el('allLog').textContent=history.join('\n');el('log'+i).textContent=history.filter(x=>x.includes('Radio '+(i+1)+':')).slice(0,40).join('\n')}
+async function connect(i){
+if(!navigator.bluetooth){status(i,'Web Bluetooth unsupported');return}
+try{
+status(i,'Choose your Heltec…');
+const device=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[SERVICE]});
+if(radios[1-i].device?.id===device.id){status(i,'Already connected as other radio');return}
+radios[i].device?.gatt?.disconnect();
+radios[i].device=device;
+el('device'+i).textContent=device.name||device.id;
+device.addEventListener('gattserverdisconnected',()=>{if(radios[i].device===device){status(i,'Disconnected');record(i,'BLE disconnected')}});
+status(i,'Connecting…');
+const server=await device.gatt.connect();
+const service=await server.getPrimaryService(SERVICE);
+const characteristic=await service.getCharacteristic(RX);
+await characteristic.startNotifications();
+characteristic.addEventListener('characteristicvaluechanged',event=>{
+const v=event.target.value;const bytes=new Uint8Array(v.buffer,v.byteOffset,v.byteLength);
+record(i,'RX '+Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join(' '));
+});
+radios[i].rx=characteristic;status(i,'Connected');record(i,'Connected to '+(device.name||device.id));
+}catch(err){status(i,'Connection failed');record(i,err.name+': '+err.message)}
+}
+for(let i=0;i<2;i++){
+el('connect'+i).onclick=()=>connect(i);
+el('disconnect'+i).onclick=()=>{radios[i].device?.gatt?.disconnect();status(i,'Disconnected')};
+}
+el('clear').onclick=()=>{history.length=0;el('allLog').textContent='No activity yet';for(let i=0;i<2;i++)el('log'+i).textContent='Waiting for radio…'};
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('section').forEach(x=>x.hidden=x.id!==b.dataset.tab)});
+if(!window.isSecureContext||!navigator.bluetooth){el('warning').hidden=false;el('warning').textContent='Web Bluetooth is unavailable. Open this site using HTTPS in a supported version of Chrome on Android.'}
+</script></body></html>

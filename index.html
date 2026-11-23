@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0c1424"><link rel="manifest" href="./manifest.webmanifest">
-<title>DualMesh Web</title>
+<title>DualMesh Web</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 *{box-sizing:border-box}body{margin:0;background:#0c1424;color:#eaf2ff;font:15px system-ui,Arial}header,main{max-width:850px;margin:auto;padding:18px}header{border-bottom:1px solid #2b3a52}h1{font-size:26px;margin:0}.muted,small{color:#aebfd5}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:15px}.card{background:#17253a;border:1px solid #314561;border-radius:15px;padding:17px}h2{font-size:19px;margin:0 0 12px}button{border:0;background:#4289ec;color:#fff;border-radius:9px;padding:11px 13px;font-weight:700;margin:4px 5px 4px 0}button.alt{background:#344760}button:disabled{opacity:.55}pre{background:#0a1422;padding:10px;border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto;font-size:12px}nav{display:flex;gap:8px;margin-bottom:18px}nav button{background:#283d58}nav button.active{background:#4289ec}section[hidden]{display:none}.status{font-weight:600;color:#c2d4ef}.warning{border:1px solid #bb8241;background:#42301f;padding:13px;border-radius:10px;margin-bottom:16px}
-select,input{font:inherit;background:#0b1728;color:#fff;border:1px solid #496080;border-radius:8px;padding:10px;max-width:100%;width:100%}label{color:#bcd0e8}nav{flex-wrap:wrap}</style>
+select,input{font:inherit;background:#0b1728;color:#fff;border:1px solid #496080;border-radius:8px;padding:10px;max-width:100%;width:100%}label{color:#bcd0e8}nav{flex-wrap:wrap}#wardriveMap{height:390px;border-radius:12px;background:#0b1728} .stats{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.stats span{background:#263b56;padding:8px;border-radius:7px}.mapkey{font-size:13px;color:#b9cce2}</style>
 </head><body>
 <header><h1>📡 DualMesh Web</h1><div class="muted">Two independent Heltec V4 Bluetooth connections</div></header>
 <main><div id="warning" class="warning" hidden></div>
@@ -16,10 +16,10 @@ select,input{font:inherit;background:#0b1728;color:#fff;border:1px solid #496080
 <article class="card"><h2 id="title1">Radio 2 · awaiting settings</h2><p class="status" id="state1">Disconnected</p><button id="connect1">Connect radio</button><button id="disconnect1" class="alt">Disconnect</button><p><small id="device1">No radio selected</small></p><p><button class="alt" id="read1">Read node info</button></p><div id="info1" class="muted">Node name and radio settings not read yet.</div><pre id="log1">Waiting for radio…</pre></article>
 </div><p class="muted"><small>Radios are assigned by their MeshCore public keys after connection: BRR → Radio 1, BRL → Radio 2. Frequencies are read live and may be changed independently.</small></p></section>
 <section id="activity" hidden><article class="card"><h2>BLE activity</h2><button id="clear" class="alt">Clear</button><pre id="allLog">No activity yet</pre></article></section>
-<section id="map" hidden><article class="card"><h2>Maps coming later</h2><p class="muted">Node maps require integration of the MeshCore protocol and location data.</p></article></section>
+<section id="map" hidden><article class="card"><h2>Wardrive map</h2><p class="muted">GPS route is recorded only while this page remains active. Node pins use advertised coordinates, not estimated transmitter locations.</p><button id="startDrive">Start GPS tracking</button><button id="stopDrive" class="alt">Stop</button><button id="syncNodes" class="alt">Sync contacts from both radios</button><button id="exportDrive" class="alt">Export GeoJSON</button><button id="clearDrive" class="alt">Clear session</button><p id="driveStatus" class="muted">GPS tracking stopped.</p><div class="stats"><span id="gpsCount">GPS points: 0</span><span id="nodeCount">Mapped nodes: 0</span></div><div id="wardriveMap"></div><p class="mapkey">🔵 BRR 910.525 MHz · 🟠 Philly 919.500 MHz · GPS route in blue. Map tiles require internet.</p><div id="nodeList" class="muted">No geolocated contacts yet.</div></article></section>
 <section id="settings" hidden><article class="card"><h2>Radio settings · live configuration</h2><p class="muted">Select a connected radio, choose a verified network preset, and apply. Changes affect only the selected radio.</p><p id="liveSettings" class="muted">Connect a radio to read its current configuration.</p><label for="settingsRadio">Choose radio</label><p><select id="settingsRadio"><option value="0">Radio 1</option><option value="1">Radio 2</option></select></p><label for="settingsPreset">Network profile</label><p><select id="settingsPreset"><option value="910">BRR · 910.525 MHz / 62.5 kHz / SF7 / 4/5</option><option value="philly">Philly · 919.500 MHz / 500 kHz / SF10</option><option value="custom">Custom</option></select></p><div class="cards"><div><label>Frequency (MHz)</label><p><input id="frequency" type="number" min="902" max="928" step="0.001"></p><label>Bandwidth (kHz)</label><p><select id="bandwidth"><option>62.5</option><option>125</option><option>250</option><option>500</option></select></p></div><div><label>Spreading factor</label><p><select id="spreading"><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option></select></p><label>Coding rate</label><p><select id="coding"><option value="5">4/5</option><option value="6">4/6</option><option value="7">4/7</option><option value="8">4/8</option></select></p><p class="muted"><small>Transmit power is unchanged when switching profiles.</small></p></div></div><button id="saveProfile">Save profile on phone</button><button id="applyProfile" class="alt">Apply to connected radio</button><p id="settingsResult" class="muted"></p></article></section><p class="muted"><small>BLE transport prototype only. No MeshCore message decoding, inboxes, encryption, transmit, offline maps or background monitoring yet. Use HTTPS and Chrome on Android. The radios must expose the expected Nordic UART BLE service.</small></p>
 </main>
-<script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
 'use strict';
 const SERVICE='6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 const RX='6e400003-b5a3-f393-e0a9-e50e24dcca9e';
@@ -64,6 +64,7 @@ const decoder=new TextDecoder();
 function parseRadioResponse(i,d){
  if(!d.length)return;
  const w=radios[i].waiters||[];for(const item of [...w]){if(item.predicate(d)){radios[i].waiters=w.filter(x=>x!==item);item.resolve(d);break}}
+ if(d[0]===0x03||d[0]===0x8a){receiveContact(i,d)}
  if(d[0]===0x05){
   if(d.length<58){record(i,'SELF_INFO too short ('+d.length+' bytes)');return}
   const v=new DataView(d.buffer,d.byteOffset,d.byteLength);
@@ -109,7 +110,7 @@ el('connect'+i).onclick=()=>connect(i);
 el('disconnect'+i).onclick=()=>{radios[i].device?.gatt?.disconnect();status(i,'Disconnected')};
 }
 el('clear').onclick=()=>{history.length=0;el('allLog').textContent='No activity yet';for(let i=0;i<2;i++)el('log'+i).textContent='Waiting for radio…'};
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('section').forEach(x=>x.hidden=x.id!==b.dataset.tab)});
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('section').forEach(x=>x.hidden=x.id!==b.dataset.tab);if(b.dataset.tab==='map')setTimeout(initMap,80)});
 const PRESETS={ '910':{frequency:910.525,bandwidth:62.5,sf:7,cr:5},philly:{frequency:919.500,bandwidth:500,sf:10,cr:5}};
 const profiles=[{preset:'910',...PRESETS['910']},{preset:'philly',...PRESETS.philly}];
 function showLiveSettings(){const i=Number(el('settingsRadio').value),s=radios[i].self;el('liveSettings').textContent=s?'Connected: '+s.name+' · '+s.frequency.toFixed(3)+' MHz / '+s.bandwidth+' kHz / SF'+s.sf+' / 4/'+s.cr:'Radio '+(i+1)+' has not reported live settings yet.'}
@@ -145,5 +146,54 @@ el('applyProfile').onclick=async()=>{
  finally{button.disabled=false}
 };
 showProfile();
+
+const drive={watch:null,points:[],nodes:new Map(),map:null,route:null,markers:null,me:null};
+function initMap(){
+ if(!window.L){el('driveStatus').textContent='Map library unavailable. Check internet access.';return}
+ if(!drive.map){drive.map=L.map('wardriveMap').setView([39.95,-75.16],10);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(drive.map);drive.route=L.polyline([],{color:'#4b91ff',weight:4}).addTo(drive.map);drive.markers=L.layerGroup().addTo(drive.map)}
+ drive.map.invalidateSize();drawDrive()
+}
+function receiveContact(i,d){
+ if(d.length<132)return;
+ const v=new DataView(d.buffer,d.byteOffset,d.byteLength);
+ const key=Array.from(d.slice(1,33),b=>b.toString(16).padStart(2,'0')).join('');
+ const name=decoder.decode(d.slice(100,132)).split(String.fromCharCode(0))[0].trim()||'Unnamed node';
+ const lat=d.length>=144?v.getInt32(136,true)/1e6:null,lon=d.length>=144?v.getInt32(140,true)/1e6:null;
+ const valid=lat!==null&&lon!==null&&Math.abs(lat)<=90&&Math.abs(lon)<=180&&(lat!==0||lon!==0);
+ const n={key,name,network:i===0?'BRR':'Philly',lat:valid?lat:null,lon:valid?lon:null,observedAt:new Date().toISOString()};
+ drive.nodes.set(i+':'+key,n);drawDrive();
+}
+function drawDrive(){
+ el('gpsCount').textContent='GPS points: '+drive.points.length;
+ const mapped=[...drive.nodes.values()].filter(n=>n.lat!==null);
+ el('nodeCount').textContent='Mapped nodes: '+mapped.length;
+ el('nodeList').textContent=mapped.length?mapped.length+' contacts with advertised GPS positions. Nodes without GPS are not placed on the map.':'No contacts with valid advertised GPS coordinates yet.';
+ if(!drive.map)return;
+ drive.route.setLatLngs(drive.points.map(p=>[p.lat,p.lon]));drive.markers.clearLayers();
+ for(const n of mapped){const color=n.network==='BRR'?'#448aff':'#ff9c42';const marker=L.circleMarker([n.lat,n.lon],{radius:7,color,fillColor:color,fillOpacity:.8}).addTo(drive.markers);const box=document.createElement('div');const strong=document.createElement('strong');strong.textContent=n.name;box.append(strong,document.createElement('br'),n.network+' · Advertised GPS');marker.bindPopup(box)}
+ if(drive.points.length){const p=drive.points[drive.points.length-1];if(drive.me)drive.map.removeLayer(drive.me);drive.me=L.circleMarker([p.lat,p.lon],{radius:7,color:'#fff',fillColor:'#43d4b0',fillOpacity:1}).addTo(drive.map)}
+}
+el('startDrive').onclick=()=>{
+ if(!navigator.geolocation){el('driveStatus').textContent='Geolocation not available';return}
+ if(drive.watch!==null)return;
+ el('driveStatus').textContent='Requesting location permission…';
+ drive.watch=navigator.geolocation.watchPosition(pos=>{
+  const p={lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:pos.coords.accuracy,at:new Date(pos.timestamp).toISOString()};
+  if(drive.points.length>=5000)drive.points.shift();
+  drive.points.push(p);el('driveStatus').textContent='Recording GPS · accuracy ±'+Math.round(p.accuracy)+' m';
+  initMap();drive.map.setView([p.lat,p.lon],Math.max(drive.map.getZoom(),14));
+ },err=>{el('driveStatus').textContent='GPS error: '+err.message;},{enableHighAccuracy:true,maximumAge:2000,timeout:20000});
+};
+el('stopDrive').onclick=()=>{if(drive.watch!==null)navigator.geolocation.clearWatch(drive.watch);drive.watch=null;el('driveStatus').textContent='GPS tracking stopped'};
+el('syncNodes').onclick=async()=>{
+ el('driveStatus').textContent='Requesting contact tables…';
+ let count=0;for(let i=0;i<2;i++){if(radios[i].device?.gatt?.connected){try{await sendCommand(i,new Uint8Array([0x04,0,0,0,0]));count++;record(i,'Requested contact table for wardrive map')}catch(e){record(i,'Contact sync failed: '+e.message)}}}
+ el('driveStatus').textContent='Requested contacts from '+count+' connected radio(s). Waiting for responses…';
+};
+el('exportDrive').onclick=()=>{
+ const features=[{type:'Feature',properties:{kind:'route'},geometry:{type:'LineString',coordinates:drive.points.map(p=>[p.lon,p.lat])}},...Array.from(drive.nodes.values()).filter(n=>n.lat!==null).map(n=>({type:'Feature',properties:{kind:'advertised_node',name:n.name,network:n.network,key:n.key,observedAt:n.observedAt},geometry:{type:'Point',coordinates:[n.lon,n.lat]}}))];
+ const blob=new Blob([JSON.stringify({type:'FeatureCollection',features},null,2)],{type:'application/geo+json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='dualmesh-wardrive-'+new Date().toISOString().slice(0,10)+'.geojson';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+el('clearDrive').onclick=()=>{if(!confirm('Clear the current GPS route and mapped contacts? Export first if needed.'))return;drive.points=[];drive.nodes.clear();drawDrive()};
 if(!window.isSecureContext||!navigator.bluetooth){el('warning').hidden=false;el('warning').textContent='Web Bluetooth is unavailable. Open this site using HTTPS in a supported version of Chrome on Android.'}
 </script></body></html>

@@ -6,10 +6,10 @@
 <title>DualMesh Web</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 *{box-sizing:border-box}body{margin:0;background:#0c1424;color:#eaf2ff;font:15px system-ui,Arial}header,main{max-width:850px;margin:auto;padding:18px}header{border-bottom:1px solid #2b3a52}h1{font-size:26px;margin:0}.muted,small{color:#aebfd5}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:15px}.card{background:#17253a;border:1px solid #314561;border-radius:15px;padding:17px}h2{font-size:19px;margin:0 0 12px}button{border:0;background:#4289ec;color:#fff;border-radius:9px;padding:11px 13px;font-weight:700;margin:4px 5px 4px 0}button.alt{background:#344760}button:disabled{opacity:.55}pre{background:#0a1422;padding:10px;border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto;font-size:12px}nav{display:flex;gap:8px;margin-bottom:18px}nav button{background:#283d58}nav button.active{background:#4289ec}section[hidden]{display:none}.status{font-weight:600;color:#c2d4ef}.warning{border:1px solid #bb8241;background:#42301f;padding:13px;border-radius:10px;margin-bottom:16px}
-select,input{font:inherit;background:#0b1728;color:#fff;border:1px solid #496080;border-radius:8px;padding:10px;max-width:100%;width:100%}label{color:#bcd0e8}nav{flex-wrap:wrap}#wardriveMap{height:390px;border-radius:12px;background:#0b1728} .stats{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.stats span{background:#263b56;padding:8px;border-radius:7px}.mapkey{font-size:13px;color:#b9cce2}nav{position:fixed;bottom:0;left:0;right:0;z-index:999;display:grid;grid-template-columns:repeat(4,1fr);width:100%;margin:0;background:#1d293d;padding:5px 4px max(5px,env(safe-area-inset-bottom));gap:3px}nav button{margin:0;padding:8px 2px;font-size:12px;min-height:48px;background:transparent}nav button.active{background:#245a5b;color:#c3fff0}body{padding-bottom:80px}main{padding:10px}header{padding:10px 14px}header h1{font-size:21px}#wardriveMap{height:calc(100dvh - 240px);min-height:340px}.mapper-tools{background:#1b2b41;border:1px solid #33465f;border-radius:12px;padding:10px;margin:8px 0}.mapper-tools summary{cursor:pointer;font-weight:700;padding:5px}.mapper-tools[open] summary{margin-bottom:9px}#map .card{padding:10px}#map .stats{gap:5px}#map .stats span{font-size:12px;padding:6px}#map button{font-size:13px;padding:9px}#map input[type=checkbox]{width:auto}#cellStats{padding:12px;border-radius:10px;background:#20344c;font-size:13px;margin:8px 0}@media(min-width:800px){nav{max-width:850px;left:50%;transform:translateX(-50%)}} </style>
+select,input{font:inherit;background:#0b1728;color:#fff;border:1px solid #496080;border-radius:8px;padding:10px;max-width:100%;width:100%}label{color:#bcd0e8}nav{flex-wrap:wrap}#wardriveMap{height:390px;border-radius:12px;background:#0b1728} .stats{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.stats span{background:#263b56;padding:8px;border-radius:7px}.mapkey{font-size:13px;color:#b9cce2}nav{position:fixed;bottom:0;left:0;right:0;z-index:999;display:grid;grid-template-columns:repeat(4,1fr);width:100%;margin:0;background:#1d293d;padding:5px 4px max(5px,env(safe-area-inset-bottom));gap:3px}nav button{margin:0;padding:8px 2px;font-size:12px;min-height:48px;background:transparent}nav button.active{background:#245a5b;color:#c3fff0}body{padding-bottom:80px}main{padding:10px}header{padding:10px 14px}header h1{font-size:21px}#wardriveMap{height:calc(100dvh - 240px);min-height:340px}.mapper-tools{background:#1b2b41;border:1px solid #33465f;border-radius:12px;padding:10px;margin:8px 0}.mapper-tools summary{cursor:pointer;font-weight:700;padding:5px}.mapper-tools[open] summary{margin-bottom:9px}#map .card{padding:10px}#map .stats{gap:5px}#map .stats span{font-size:12px;padding:6px}#map button{font-size:13px;padding:9px}#map input[type=checkbox]{width:auto}#cellStats{padding:12px;border-radius:10px;background:#20344c;font-size:13px;margin:8px 0}@media(min-width:800px){nav{max-width:850px;left:50%;transform:translateX(-50%)}}  .battery-strip{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.battery-card{border:1px solid #3a526c;border-radius:10px;padding:10px;background:#1c3047}.battery-card.low{border-color:#f97316}.battery-card.critical{border-color:#ef4444}.battery-card strong{display:block;font-size:13px}.battery-card .reading{font-size:19px;font-weight:700;margin:5px 0}.battery-card small{font-size:11px}.battery-card button{font-size:11px;padding:6px 8px}.battery-meter{height:6px;background:#405168;border-radius:5px;overflow:hidden}.battery-meter i{display:block;height:100%;background:#43c9a0;width:0}.battery-card.low .battery-meter i{background:#f97316}.battery-card.critical .battery-meter i{background:#ef4444}</style>
 </head><body>
 <header><h1>📡 DualMesh Web</h1><div class="muted">Two independent Heltec V4 Bluetooth connections</div></header>
-<main><div id="warning" class="warning" hidden></div>
+<main><div class="battery-strip"><div id="battery0" class="battery-card"><strong>BRR battery</strong><div class="reading">—</div><small>Connect radio</small></div><div id="battery1" class="battery-card"><strong>Philly battery</strong><div class="reading">—</div><small>Connect radio</small></div></div><div id="warning" class="warning" hidden></div>
 <nav><button data-tab="map" class="active">🗺️ Map</button><button data-tab="activity">📋 Log</button><button data-tab="radios">📡 Connect</button><button data-tab="settings">⚙️ Settings</button></nav>
 <section id="radios" hidden><div class="cards">
 <article class="card"><h2 id="title0">Radio 1 · awaiting settings</h2><p class="status" id="state0">Disconnected</p><button id="connect0">Connect radio</button><button id="disconnect0" class="alt">Disconnect</button><p><small id="device0">No radio selected</small></p><p><button class="alt" id="read0">Read node info</button></p><div id="info0" class="muted">Node name and radio settings not read yet.</div><pre id="log0">Waiting for radio…</pre></article>
@@ -40,9 +40,9 @@ status(i,'Choose your Heltec…');
 const device=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[SERVICE]});
 if(radios[1-i].device?.id===device.id){status(i,'Already connected as other radio');return}
 radios[i].device?.gatt?.disconnect();
-radios[i].device=device;radios[i].self=null;radios[i].deviceInfo=null;
+radios[i].device=device;radios[i].self=null;radios[i].deviceInfo=null;radios[i].battery=null;updateBattery(i);
 el('device'+i).textContent=device.name||device.id;
-device.addEventListener('gattserverdisconnected',()=>{const slot=indexOfDevice(device);if(slot>=0){status(slot,'Disconnected');record(slot,'BLE disconnected')}});
+device.addEventListener('gattserverdisconnected',()=>{const slot=indexOfDevice(device);if(slot>=0){status(slot,'Disconnected');updateBattery(slot);record(slot,'BLE disconnected')}});
 status(i,'Connecting…');
 const server=await device.gatt.connect();
 const service=await server.getPrimaryService(SERVICE);
@@ -56,7 +56,7 @@ record(slot,'RX '+Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join(' '))
 parseRadioResponse(slot,bytes);
 });
 radios[i].rx=characteristic;status(i,'Connected');record(i,'Connected to '+(device.name||device.id));
-await readRadio(i);
+await readRadio(i);await requestBattery(i);
 }catch(err){status(i,'Connection failed');record(i,err.name+': '+err.message)}
 }
 
@@ -64,6 +64,7 @@ const decoder=new TextDecoder();
 function parseRadioResponse(i,d){
  if(!d.length)return;
  const w=radios[i].waiters||[];for(const item of [...w]){if(item.predicate(d)){radios[i].waiters=w.filter(x=>x!==item);item.resolve(d);break}}
+ if(d[0]===0x0c&&d.length>=3){const mv=d[1]|(d[2]<<8);if(mv>=2000&&mv<=5500){radios[i].battery={mv,at:Date.now()};updateBattery(i)}else record(i,'Battery reading outside expected range: '+mv+' mV')}
  if(d[0]===0x03){receiveContact(i,d)}
  if(d[0]===0x88||d[0]===0x8e){receiveRadioEvent(i,d)}
  if(d[0]===0x05){
@@ -75,7 +76,7 @@ function parseRadioResponse(i,d){
   const slot=assignByIdentity(i);
   el('title'+slot).textContent=info.name+' · '+info.frequency.toFixed(3)+' MHz';
   if(Number(el('settingsRadio').value)===slot)showLiveSettings();
-  showRadioInfo(slot);
+  showRadioInfo(slot);updateBattery(slot);
   record(slot,'SELF_INFO '+name+' · '+info.frequency+' MHz · '+info.bandwidth+' kHz · SF'+info.sf+' · CR 4/'+info.cr);
  }else if(d[0]===0x0d){
   const str=(start,len)=>decoder.decode(d.slice(start,start+len)).split(String.fromCharCode(0))[0].trim();
@@ -94,6 +95,11 @@ async function sendCommand(i,payload){
  const r=radios[i];if(!r.device?.gatt?.connected||!r.write)throw Error('Connect the radio first');
  await r.write.writeValueWithResponse(payload);
 }
+// Voltage-based estimate for a single-cell Li-ion pack. Actual percentage depends on load and chemistry.
+function batteryPercent(mv){const pts=[[3000,0],[3300,5],[3500,12],[3600,20],[3700,35],[3800,55],[3900,72],[4000,85],[4100,95],[4200,100]];for(let j=1;j<pts.length;j++){if(mv<=pts[j][0]){const a=pts[j-1],b=pts[j];return Math.max(0,Math.min(100,Math.round(a[1]+(mv-a[0])*(b[1]-a[1])/(b[0]-a[0]))))}}return 100}
+function updateBattery(i){const r=radios[i],root=el('battery'+i),connected=!!r.device?.gatt?.connected,b=r.battery,age=b?Date.now()-b.at:Infinity,valid=connected&&age<180000;root.className='battery-card';root.replaceChildren();const heading=document.createElement('strong');heading.textContent=(r.self?.name|| (i===0?'BRR':'Philly'))+' · Battery';root.append(heading);const reading=document.createElement('div');reading.className='reading';reading.textContent=valid?(b.mv/1000).toFixed(2)+' V':'—';root.append(reading);if(valid){const pct=batteryPercent(b.mv);if(b.mv<=3400)root.classList.add('critical');else if(b.mv<=3600)root.classList.add('low');const meter=document.createElement('div');meter.className='battery-meter';const fill=document.createElement('i');fill.style.width=pct+'%';meter.append(fill);root.append(meter);const note=document.createElement('small');note.textContent='~'+pct+'% estimate · '+(b.mv<=3400?'LOW BATTERY · ':b.mv<=3600?'Battery getting low · ':'')+'updated '+Math.round(age/1000)+'s ago';root.append(note)}else{const note=document.createElement('small');note.textContent=connected?'Awaiting voltage reading':'Disconnected';root.append(note)}const button=document.createElement('button');button.className='alt';button.textContent='Refresh';button.disabled=!connected;button.onclick=()=>requestBattery(i);root.append(button)}
+async function requestBattery(i){if(!radios[i].device?.gatt?.connected)return;try{await sendCommand(i,new Uint8Array([0x14]));}catch(e){record(i,'Battery query failed: '+e.message)}}
+setInterval(()=>{for(let i=0;i<2;i++){if(radios[i].device?.gatt?.connected){const last=radios[i].lastBatteryQuery||0;if(Date.now()-last>60000){radios[i].lastBatteryQuery=Date.now();requestBattery(i)}}updateBattery(i)}},15000);
 async function readRadio(i){
  try{
   el('info'+i).textContent='Requesting node identity and LoRa settings…';

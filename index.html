@@ -12,8 +12,8 @@ select,input{font:inherit;background:#0b1728;color:#fff;border:1px solid #496080
 <main><div id="warning" class="warning" hidden></div>
 <nav><button data-tab="radios" class="active">Radios</button><button data-tab="activity">Activity</button><button data-tab="map">Map</button><button data-tab="settings">Settings</button></nav>
 <section id="radios"><div class="cards">
-<article class="card"><h2>Radio 1 · 910 MHz</h2><p class="status" id="state0">Disconnected</p><button id="connect0">Connect radio</button><button id="disconnect0" class="alt">Disconnect</button><p><small id="device0">No radio selected</small></p><pre id="log0">Waiting for radio…</pre></article>
-<article class="card"><h2>Radio 2 · 915 MHz</h2><p class="status" id="state1">Disconnected</p><button id="connect1">Connect radio</button><button id="disconnect1" class="alt">Disconnect</button><p><small id="device1">No radio selected</small></p><pre id="log1">Waiting for radio…</pre></article>
+<article class="card"><h2>Radio 1 · 910 MHz</h2><p class="status" id="state0">Disconnected</p><button id="connect0">Connect radio</button><button id="disconnect0" class="alt">Disconnect</button><p><small id="device0">No radio selected</small></p><p><button class="alt" id="read0">Read node info</button></p><div id="info0" class="muted">Node name and radio settings not read yet.</div><pre id="log0">Waiting for radio…</pre></article>
+<article class="card"><h2>Radio 2 · 915 MHz</h2><p class="status" id="state1">Disconnected</p><button id="connect1">Connect radio</button><button id="disconnect1" class="alt">Disconnect</button><p><small id="device1">No radio selected</small></p><p><button class="alt" id="read1">Read node info</button></p><div id="info1" class="muted">Node name and radio settings not read yet.</div><pre id="log1">Waiting for radio…</pre></article>
 </div><p class="muted"><small>910 and 915 MHz are labels, not verified or configured frequencies. Select the correct Heltec in each Bluetooth picker.</small></p></section>
 <section id="activity" hidden><article class="card"><h2>BLE activity</h2><button id="clear" class="alt">Clear</button><pre id="allLog">No activity yet</pre></article></section>
 <section id="map" hidden><article class="card"><h2>Maps coming later</h2><p class="muted">Node maps require integration of the MeshCore protocol and location data.</p></article></section>
@@ -23,6 +23,7 @@ select,input{font:inherit;background:#0b1728;color:#fff;border:1px solid #496080
 'use strict';
 const SERVICE='6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 const RX='6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+const WRITE='6e400002-b5a3-f393-e0a9-e50e24dcca9e';
 const radios=[{},{}], history=[];
 const el=id=>document.getElementById(id);
 function status(i,msg){el('state'+i).textContent=msg}
@@ -34,21 +35,65 @@ status(i,'Choose your Heltec…');
 const device=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[SERVICE]});
 if(radios[1-i].device?.id===device.id){status(i,'Already connected as other radio');return}
 radios[i].device?.gatt?.disconnect();
-radios[i].device=device;
+radios[i].device=device;radios[i].self=null;radios[i].deviceInfo=null;
 el('device'+i).textContent=device.name||device.id;
 device.addEventListener('gattserverdisconnected',()=>{if(radios[i].device===device){status(i,'Disconnected');record(i,'BLE disconnected')}});
 status(i,'Connecting…');
 const server=await device.gatt.connect();
 const service=await server.getPrimaryService(SERVICE);
 const characteristic=await service.getCharacteristic(RX);
+radios[i].write=await service.getCharacteristic(WRITE);
 await characteristic.startNotifications();
 characteristic.addEventListener('characteristicvaluechanged',event=>{
 const v=event.target.value;const bytes=new Uint8Array(v.buffer,v.byteOffset,v.byteLength);
 record(i,'RX '+Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join(' '));
+parseRadioResponse(i,bytes);
 });
 radios[i].rx=characteristic;status(i,'Connected');record(i,'Connected to '+(device.name||device.id));
+await readRadio(i);
 }catch(err){status(i,'Connection failed');record(i,err.name+': '+err.message)}
 }
+
+const decoder=new TextDecoder();
+function parseRadioResponse(i,d){
+ if(!d.length)return;
+ if(d[0]===0x05){
+  if(d.length<58){record(i,'SELF_INFO too short ('+d.length+' bytes)');return}
+  const v=new DataView(d.buffer,d.byteOffset,d.byteLength);
+  const name=decoder.decode(d.slice(58)).split('\\0')[0].trim()||'Unnamed MeshCore node';
+  const info={name,frequency:v.getUint32(48,true)/1000,bandwidth:v.getUint32(52,true)/1000,sf:d[56],cr:d[57],txPower:v.getInt8(2),maxTxPower:v.getInt8(3),pubkey:Array.from(d.slice(4,36),x=>x.toString(16).padStart(2,'0')).join('')};
+  radios[i].self=info;
+  showRadioInfo(i);
+  record(i,'SELF_INFO '+name+' · '+info.frequency+' MHz · '+info.bandwidth+' kHz · SF'+info.sf+' · CR 4/'+info.cr);
+ }else if(d[0]===0x0d){
+  const str=(start,len)=>decoder.decode(d.slice(start,start+len)).split('\\0')[0].trim();
+  radios[i].deviceInfo={model:d.length>=60?str(20,40):'',version:d.length>=80?str(60,20):''};
+  showRadioInfo(i);
+  record(i,'DEVICE_INFO '+(radios[i].deviceInfo.model||'unknown model')+' '+(radios[i].deviceInfo.version||''));
+ }
+}
+function showRadioInfo(i){
+ const s=radios[i].self,di=radios[i].deviceInfo;
+ if(!s)return;
+ const safe=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ el('info'+i).innerHTML='<strong>Node: '+safe(s.name)+'</strong><p>Frequency: '+s.frequency.toFixed(3)+' MHz<br>Bandwidth: '+s.bandwidth+' kHz<br>Spreading factor: SF'+s.sf+'<br>Coding rate: 4/'+s.cr+'<br>TX power: '+s.txPower+' dBm</p><small>Public key: '+s.pubkey.slice(0,16)+'…'+(di?.model?'<br>Model: '+safe(di.model):'')+(di?.version?'<br>Firmware: '+safe(di.version):'')+'</small>';
+}
+async function sendCommand(i,payload){
+ const r=radios[i];if(!r.device?.gatt?.connected||!r.write)throw Error('Connect the radio first');
+ await r.write.writeValueWithResponse(payload);
+}
+async function readRadio(i){
+ try{
+  el('info'+i).textContent='Requesting node identity and LoRa settings…';
+  const cmd=new Uint8Array(19);cmd[0]=0x01;new TextEncoder().encodeInto('DualMesh',cmd.subarray(8));
+  await sendCommand(i,cmd);
+  await sendCommand(i,new Uint8Array([0x16,0x03]));
+  record(i,'Sent APP_START and DEVICE_QUERY (read only)');
+  setTimeout(()=>{if(!radios[i].self)el('info'+i).textContent='No SELF_INFO response yet. Tap Read node info to retry.'},6000);
+ }catch(e){el('info'+i).textContent='Read failed: '+e.message;record(i,'Read failed: '+e.message)}
+}
+el('read0').onclick=()=>readRadio(0);el('read1').onclick=()=>readRadio(1);
+
 for(let i=0;i<2;i++){
 el('connect'+i).onclick=()=>connect(i);
 el('disconnect'+i).onclick=()=>{radios[i].device?.gatt?.disconnect();status(i,'Disconnected')};

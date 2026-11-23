@@ -60,13 +60,13 @@ function parseRadioResponse(i,d){
  if(d[0]===0x05){
   if(d.length<58){record(i,'SELF_INFO too short ('+d.length+' bytes)');return}
   const v=new DataView(d.buffer,d.byteOffset,d.byteLength);
-  const name=decoder.decode(d.slice(58)).split('\\0')[0].trim()||'Unnamed MeshCore node';
+  const name=decoder.decode(d.slice(58)).split(String.fromCharCode(0))[0].trim()||'Unnamed MeshCore node';
   const info={name,frequency:v.getUint32(48,true)/1000,bandwidth:v.getUint32(52,true)/1000,sf:d[56],cr:d[57],txPower:v.getInt8(2),maxTxPower:v.getInt8(3),pubkey:Array.from(d.slice(4,36),x=>x.toString(16).padStart(2,'0')).join('')};
   radios[i].self=info;
   showRadioInfo(i);
   record(i,'SELF_INFO '+name+' · '+info.frequency+' MHz · '+info.bandwidth+' kHz · SF'+info.sf+' · CR 4/'+info.cr);
  }else if(d[0]===0x0d){
-  const str=(start,len)=>decoder.decode(d.slice(start,start+len)).split('\\0')[0].trim();
+  const str=(start,len)=>decoder.decode(d.slice(start,start+len)).split(String.fromCharCode(0))[0].trim();
   radios[i].deviceInfo={model:d.length>=60?str(20,40):'',version:d.length>=80?str(60,20):''};
   showRadioInfo(i);
   record(i,'DEVICE_INFO '+(radios[i].deviceInfo.model||'unknown model')+' '+(radios[i].deviceInfo.version||''));

@@ -179,7 +179,7 @@ function drawDrive(){
  el('nodeCount').textContent='Mapped nodes: '+mapped.length;
  el('allNodeCount').textContent='Known contacts: '+[...drive.nodes.values()].filter(enabled).length;
  const cells=new Map();for(const p of drive.points){cells.set(gridKey(p),p)}el('gridCount').textContent='Visited cells: '+cells.size;
- const recent=drive.discoveries.filter(enabled).slice(-20).reverse();el('discoveryLog').textContent=recent.length?recent.map(d=>d.at.slice(11,19)+' · '+d.network+' · '+d.name+(d.receiverLat!==null?' · GPS recorded':' · no GPS fix')).join('\\n'):'No contacts discovered yet.';el('discoveryLog').style.whiteSpace='pre-line';
+ const recent=drive.discoveries.filter(enabled).slice(-20).reverse();el('discoveryLog').textContent=recent.length?recent.map(d=>d.at.slice(11,19)+' · '+d.network+' · '+d.name+(d.receiverLat!==null?' · GPS recorded':' · no GPS fix')).join('\n'):'No contacts discovered yet.';el('discoveryLog').style.whiteSpace='pre-line';
  el('nodeList').textContent=mapped.length?mapped.length+' contacts with advertised GPS positions. Nodes without GPS are not placed on the map.':'No contacts with valid advertised GPS coordinates yet.';
  if(!drive.map)return;
  drive.route.setLatLngs(drive.points.map(p=>[p.lat,p.lon]));drive.markers.clearLayers();drive.grid.clearLayers();

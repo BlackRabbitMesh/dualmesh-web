@@ -14,7 +14,7 @@ select,input{font:inherit;background:#0b1728;color:#fff;border:1px solid #496080
 <section id="radios"><div class="cards">
 <article class="card"><h2 id="title0">Radio 1 · awaiting settings</h2><p class="status" id="state0">Disconnected</p><button id="connect0">Connect radio</button><button id="disconnect0" class="alt">Disconnect</button><p><small id="device0">No radio selected</small></p><p><button class="alt" id="read0">Read node info</button></p><div id="info0" class="muted">Node name and radio settings not read yet.</div><pre id="log0">Waiting for radio…</pre></article>
 <article class="card"><h2 id="title1">Radio 2 · awaiting settings</h2><p class="status" id="state1">Disconnected</p><button id="connect1">Connect radio</button><button id="disconnect1" class="alt">Disconnect</button><p><small id="device1">No radio selected</small></p><p><button class="alt" id="read1">Read node info</button></p><div id="info1" class="muted">Node name and radio settings not read yet.</div><pre id="log1">Waiting for radio…</pre></article>
-</div><p class="muted"><small>910 and 915 MHz are labels, not verified or configured frequencies. Select the correct Heltec in each Bluetooth picker.</small></p></section>
+</div><p class="muted"><small>Radios are assigned by their MeshCore public keys after connection: BRR → Radio 1, BRL → Radio 2. Frequencies are read live and may be changed independently.</small></p></section>
 <section id="activity" hidden><article class="card"><h2>BLE activity</h2><button id="clear" class="alt">Clear</button><pre id="allLog">No activity yet</pre></article></section>
 <section id="map" hidden><article class="card"><h2>Maps coming later</h2><p class="muted">Node maps require integration of the MeshCore protocol and location data.</p></article></section>
 <section id="settings" hidden><article class="card"><h2>Radio settings · live configuration</h2><p class="muted">Select a connected radio, choose a verified network preset, and apply. Changes affect only the selected radio.</p><p id="liveSettings" class="muted">Connect a radio to read its current configuration.</p><label for="settingsRadio">Choose radio</label><p><select id="settingsRadio"><option value="0">Radio 1</option><option value="1">Radio 2</option></select></p><label for="settingsPreset">Network profile</label><p><select id="settingsPreset"><option value="910">BRR · 910.525 MHz / 62.5 kHz / SF7 / 4/5</option><option value="philly">Philly · 919.500 MHz / 500 kHz / SF10</option><option value="custom">Custom</option></select></p><div class="cards"><div><label>Frequency (MHz)</label><p><input id="frequency" type="number" min="902" max="928" step="0.001"></p><label>Bandwidth (kHz)</label><p><select id="bandwidth"><option>62.5</option><option>125</option><option>250</option><option>500</option></select></p></div><div><label>Spreading factor</label><p><select id="spreading"><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option></select></p><label>Coding rate</label><p><select id="coding"><option value="5">4/5</option><option value="6">4/6</option><option value="7">4/7</option><option value="8">4/8</option></select></p><p class="muted"><small>Transmit power is unchanged when switching profiles.</small></p></div></div><button id="saveProfile">Save profile on phone</button><button id="applyProfile" class="alt">Apply to connected radio</button><p id="settingsResult" class="muted"></p></article></section><p class="muted"><small>BLE transport prototype only. No MeshCore message decoding, inboxes, encryption, transmit, offline maps or background monitoring yet. Use HTTPS and Chrome on Android. The radios must expose the expected Nordic UART BLE service.</small></p>
@@ -25,6 +25,11 @@ const SERVICE='6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 const RX='6e400003-b5a3-f393-e0a9-e50e24dcca9e';
 const WRITE='6e400002-b5a3-f393-e0a9-e50e24dcca9e';
 const radios=[{},{}], history=[];
+const KNOWN_KEYS=['4ef6615c','5453396b'];
+function indexOfDevice(device){return radios.findIndex(r=>r.device===device)}
+function refreshSlot(i){const r=radios[i],s=r.self;el('device'+i).textContent=r.device?.name||'No radio selected';el('title'+i).textContent=s?s.name+' · '+s.frequency.toFixed(3)+' MHz':'Radio '+(i+1)+' · awaiting settings';if(s){showRadioInfo(i);status(i,r.device?.gatt?.connected?'Connected':'Disconnected')}else{el('info'+i).textContent='Node name and radio settings not read yet.';status(i,r.device?.gatt?.connected?'Identifying…':'Disconnected')}el('log'+i).textContent='Radio '+(i+1)+' slot ready';}
+function assignByIdentity(i){const s=radios[i].self;if(!s)return i;const target=KNOWN_KEYS.findIndex(k=>s.pubkey.startsWith(k));if(target<0){record(i,'Unknown node identity; retaining current slot');return i}if(target===i)return i;const other=radios[target];if(other.self&&KNOWN_KEYS[target]===other.self.pubkey.slice(0,8)){record(i,'Identity conflict: target slot already holds its expected node');return i}const temp=radios[target];radios[target]=radios[i];radios[i]=temp;refreshSlot(i);refreshSlot(target);record(target,'Auto-assigned '+s.name+' to Radio '+(target+1));if(Number(el('settingsRadio').value)===i||Number(el('settingsRadio').value)===target)showLiveSettings();return target}
+
 const el=id=>document.getElementById(id);
 function status(i,msg){el('state'+i).textContent=msg}
 function record(i,msg){const line='['+new Date().toLocaleTimeString()+'] Radio '+(i+1)+': '+msg;history.unshift(line);if(history.length>250)history.pop();el('allLog').textContent=history.join('\n');el('log'+i).textContent=history.filter(x=>x.includes('Radio '+(i+1)+':')).slice(0,40).join('\n')}
@@ -37,7 +42,7 @@ if(radios[1-i].device?.id===device.id){status(i,'Already connected as other radi
 radios[i].device?.gatt?.disconnect();
 radios[i].device=device;radios[i].self=null;radios[i].deviceInfo=null;
 el('device'+i).textContent=device.name||device.id;
-device.addEventListener('gattserverdisconnected',()=>{if(radios[i].device===device){status(i,'Disconnected');record(i,'BLE disconnected')}});
+device.addEventListener('gattserverdisconnected',()=>{const slot=indexOfDevice(device);if(slot>=0){status(slot,'Disconnected');record(slot,'BLE disconnected')}});
 status(i,'Connecting…');
 const server=await device.gatt.connect();
 const service=await server.getPrimaryService(SERVICE);
@@ -46,8 +51,9 @@ radios[i].write=await service.getCharacteristic(WRITE);
 await characteristic.startNotifications();
 characteristic.addEventListener('characteristicvaluechanged',event=>{
 const v=event.target.value;const bytes=new Uint8Array(v.buffer,v.byteOffset,v.byteLength);
-record(i,'RX '+Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join(' '));
-parseRadioResponse(i,bytes);
+const slot=indexOfDevice(device);if(slot<0)return;
+record(slot,'RX '+Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join(' '));
+parseRadioResponse(slot,bytes);
 });
 radios[i].rx=characteristic;status(i,'Connected');record(i,'Connected to '+(device.name||device.id));
 await readRadio(i);
@@ -64,10 +70,11 @@ function parseRadioResponse(i,d){
   const name=decoder.decode(d.slice(58)).split(String.fromCharCode(0))[0].trim()||'Unnamed MeshCore node';
   const info={name,frequency:v.getUint32(48,true)/1000,bandwidth:v.getUint32(52,true)/1000,sf:d[56],cr:d[57],txPower:v.getInt8(2),maxTxPower:v.getInt8(3),pubkey:Array.from(d.slice(4,36),x=>x.toString(16).padStart(2,'0')).join('')};
   radios[i].self=info;
-  el('title'+i).textContent=info.name+' · '+info.frequency.toFixed(3)+' MHz';
-  if(Number(el('settingsRadio').value)===i)showLiveSettings();
-  showRadioInfo(i);
-  record(i,'SELF_INFO '+name+' · '+info.frequency+' MHz · '+info.bandwidth+' kHz · SF'+info.sf+' · CR 4/'+info.cr);
+  const slot=assignByIdentity(i);
+  el('title'+slot).textContent=info.name+' · '+info.frequency.toFixed(3)+' MHz';
+  if(Number(el('settingsRadio').value)===slot)showLiveSettings();
+  showRadioInfo(slot);
+  record(slot,'SELF_INFO '+name+' · '+info.frequency+' MHz · '+info.bandwidth+' kHz · SF'+info.sf+' · CR 4/'+info.cr);
  }else if(d[0]===0x0d){
   const str=(start,len)=>decoder.decode(d.slice(start,start+len)).split(String.fromCharCode(0))[0].trim();
   radios[i].deviceInfo={model:d.length>=60?str(20,40):'',version:d.length>=80?str(60,20):''};
@@ -128,7 +135,7 @@ el('applyProfile').onclick=async()=>{
   const reply=await commandAndWait(i,payload,d=>d[0]===0x00||d[0]===0x01);
   if(reply[0]!==0x00)throw Error('Radio rejected configuration (ERR)');
   el('settingsResult').textContent='Radio accepted change. Reading settings back…';
-  const oldInfo=r.self;const read=waitFor(i,d=>d[0]===0x05,5000);
+  const read=waitFor(i,d=>d[0]===0x05,5000);
   const start=new Uint8Array(19);start[0]=0x01;new TextEncoder().encodeInto('DualMesh',start.subarray(8));await sendCommand(i,start);await read;
   const s=r.self;
   if(!s||Math.abs(s.frequency-p.frequency)>0.001||Math.abs(s.bandwidth-p.bandwidth)>0.01||s.sf!==p.sf||s.cr!==p.cr)throw Error('Readback did not match requested settings. Check the radio.');
